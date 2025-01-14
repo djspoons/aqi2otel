@@ -1,0 +1,76 @@
+receivers:
+  otlp:
+    protocols:
+      grpc:
+        # Need to make sure we bind to the host's localhost
+        endpoint: 0.0.0.0:4317
+
+  prometheus:
+    config:
+      scrape_configs:
+      - job_name: 'otelcol'
+        scrape_interval: 10s
+        static_configs:
+        - targets: ['0.0.0.0:8888']
+        metric_relabel_configs:
+          - source_labels: [ __name__ ]
+            regex: '.*grpc_io.*'
+            action: drop
+
+processors:
+  resource:
+    attributes:
+    - key: "location"
+      value: "us-west1"
+      action: upsert
+
+  batch:
+    # batch metrics before sending to reduce API usage
+    send_batch_max_size: 200
+    send_batch_size: 200
+    timeout: 5s
+
+  transform:
+    # "location", "cluster", "namespace", "job", "instance", and "project_id" are reserved, and 
+    # metrics containing these labels will be rejected.  Prefix them with exported_ to prevent this.
+    metric_statements:
+    - context: datapoint
+      statements:
+      - set(attributes["exported_location"], attributes["location"])
+      - delete_key(attributes, "location")
+      - set(attributes["exported_cluster"], attributes["cluster"])
+      - delete_key(attributes, "cluster")
+      - set(attributes["exported_namespace"], attributes["namespace"])
+      - delete_key(attributes, "namespace")
+      - set(attributes["exported_job"], attributes["job"])
+      - delete_key(attributes, "job")
+      - set(attributes["exported_instance"], attributes["instance"])
+      - delete_key(attributes, "instance")
+      - set(attributes["exported_project_id"], attributes["project_id"])
+      - delete_key(attributes, "project_id")
+
+  memory_limiter:
+    # drop metrics if memory usage gets too high
+    check_interval: 1s
+    limit_percentage: 65
+    spike_limit_percentage: 20
+
+exporters:
+  googlemanagedprometheus:
+
+  debug:
+    verbosity:
+      detailed
+      
+extensions:
+  zpages:
+    endpoint: 0.0.0.0:55679
+
+service:
+#  extensions: [zpages]
+  pipelines:
+    metrics:
+      receivers: [otlp, prometheus]
+      processors: [resource, batch, memory_limiter]
+      exporters: [googlemanagedprometheus]
+#      exporters: [debug]
