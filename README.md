@@ -88,7 +88,7 @@ Add in `-p 55679:55679` if you want to use Zpages to debug the collector.
 
 Then add something to your crontab to run the Go executable every minute.
 
-    echo "* * * * * ${HOME}/Code/aqi2otel/run.sh" | crontab -
+    echo "* * * * * /bin/bash ${HOME}/Code/aqi2otel/run.sh" | crontab -
 
 Ta-da!
 
