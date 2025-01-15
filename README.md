@@ -69,7 +69,7 @@ Make a copy and set variables in env.sh.
 Make a directory for your service account credentials and copy them over.
 
     mkdir -p ${HOME}/.google_cloud_auth/telemetry-collector/
-    chmod -r 770 ${HOME}/.google_cloud_auth
+    chmod -R 770 ${HOME}/.google_cloud_auth
     scp ... ${HOME}/.google_cloud_auth/telemetry-collector/
 
 Then run the collector and set it to restart automatically.
@@ -88,7 +88,7 @@ Add in `-p 55679:55679` if you want to use Zpages to debug the collector.
 
 Then add something to your crontab to run the Go executable every minute.
 
-    crontab <(echo "* * * * * .../aqi2otel/run.sh")
+    echo "* * * * * ${HOME}/Code/aqi2otel/run.sh" | crontab -
 
 Ta-da!
 
