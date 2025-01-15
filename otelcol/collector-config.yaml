@@ -23,6 +23,9 @@ processors:
     - key: "location"
       value: "us-west1"
       action: upsert
+    - key: "host.name"
+      from_attribute: "host.name"
+      action: insert
 
   batch:
     # batch metrics before sending to reduce API usage

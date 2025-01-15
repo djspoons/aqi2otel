@@ -4,22 +4,25 @@
 I purchased a PurpleAir air quality sensor in the summer of 2022. While the
 map and graphs on the [PurpleAir](https://purpleair.com) website are good,
 what I really wanted was for something to _alert_ me when the air quality at
-my home was getting bad. And as it turns out, I just happen know a service
-that can take metric time series and generate alerts in various ways: I
-decided to pipe my air quality data to [Lightstep](https://lightstep.com).
+my home was getting bad.
+
+This repo contains code to scrape air quality data (either directly from the
+sensor or from the PurpleAir API) and forward metrics to Google Cloud
+Monitoring.
+
+Note that I originally set things up to run in the cloud and to generate
+alerts using [Lightstep](https://lightstep.com); that code is still around,
+but I haven't tested it lately.
 
 ## Summary
 
-This repo contains a small Go program that:
+This repo contains a small Go program and related configuration that:
 
-1. Queries the PurpleAir API for data associated with a single sensor.
-2. Pushes those data using OpenTelemetry metrics to Lightstep.
+1. Queries a PurpleAir sensor or the PurpleAir API for data associated
+   with a single sensor.
+2. Pushes those data using OpenTelemetry to metrics datastore.
 
 It can also be used on the command line to test changes locally.
-
-I run that code as a Google Cloud Function every two minutes. There a
-step-by-step process for setting that up that below (mostly for the benefit of
-myself in the future).
 
 ### Caveats
 
@@ -33,25 +36,67 @@ I'm sure many more that I've not listed here but to name a few:
 
 There's not much to say about the code itself: it just does the two steps
 listed above. I wrote it as a stand-alone program: it expects to be run
-whenever it needs to scrape metrics from the PurpleAir and then exits
-immediately after forwarding these metric values. (An alternative would have
-been to have a long running process with an internal timer to wake up
-periodically to perform measurements.)
+whenever it needs to scrape metrics and then exits immediately after
+forwarding these metric values. (An alternative would have been to have
+a long running process with an internal timer to wake up periodically
+to perform measurements.)
 
-Perhaps the only interesting thing is calling `Stop()` on the
-`MeterProvider` - this forces the provider to flush any queued counters and to
-make an observation of any asynchronous instruments. Don't forget to check the
-result of `Stop()`!
+Perhaps the only interesting thing is calling `ForceFlush()` on the
+`MeterProvider` - this forces the provider to flush any queued counters and
+to make an observation of any asynchronous instruments.
 
-Use standard Go commands to build, run, and test locally. Run `make zip` to
-create a zip file suitable for uploading to Google Cloud.
+Use standard Go commands to build, run, and test locally. (When using Google
+Cloud Run, use `make zip` to create a zip file suitable for uploading to
+Google Cloud.)
 
 ## Go version
 
-At the time I implemented this, the latest version of Go supported by Google
-Cloud Functions was 1.16, so I included `go 1.16` in the go.mod file.
+See the go.mod file. (For the Cloud Run version, at the time I implemented it,
+the latest version of Go supported by Google Cloud Functions was 1.16.)
 
-# Google Cloud Set-Up
+# Linux Set-Up
+
+There are two parts: the Go executable and deployment of the OpenTelemetry
+collector.
+
+    git clone https://github.com/djspoons/aqi2otel.git
+
+Make a copy and set variables in env.sh.
+
+    cp env.sh.example env.sh
+    vim env.sh
+
+Make a directory for your service account credentials and copy them over.
+
+    mkdir -p ${HOME}/.google_cloud_auth/telemetry-collector/
+    chmod -r 770 ${HOME}/.google_cloud_auth
+    scp ... ${HOME}/.google_cloud_auth/telemetry-collector/
+
+Then run the collector and set it to restart automatically.
+
+    docker run --user `id -u`:`id -g` \
+         --restart always \
+         -v ./otelcol:/config \
+         -v ${HOME}/.google_cloud_auth/telemetry-collector:/auth \
+         -e OTEL_RESOURCE_ATTRIBUTES="host.name=$(hostname)" \
+         -e GOOGLE_APPLICATION_CREDENTIALS=/auth/${SERVICE_ACCOUNT_CREDS} \
+         -p 4317:4317 \
+         otel/opentelemetry-collector-contrib:${COLLECTOR_VERSION} \
+             --config=file:/config/collector-config.yaml &
+
+Add in `-p 55679:55679` if you want to use Zpages to debug the collector.
+
+Then add something to your crontab to run the Go executable every minute.
+
+    crontab <(echo "* * * * * .../aqi2otel/run.sh")
+
+Ta-da!
+
+# Google Cloud Run Set-Up
+
+I originally set this up to run entirely in the cloud, using Google Cloud Run,
+PurpleAir's API, and Lightstep. The Go code runs as a Google Cloud Function
+every two minutes. There a step-by-step process for setting that up that below.
 
 ## Secrets
 
@@ -126,4 +171,4 @@ follows:
 
     go run ./cmd --stdout
 
-Without `--stdout` the program will send data to Lightstep.
+Without `--stdout` the program will send data the OpenTelemetry collector.
