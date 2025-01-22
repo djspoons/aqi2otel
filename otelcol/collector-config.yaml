@@ -23,9 +23,14 @@ processors:
     - key: "location"
       value: "us-west1"
       action: upsert
+    # Add a cluster key so that we can ensure these metrics are unique from Google
+    # Cloud Monitoring's perspective.
+    - key: "cluster"
+      from_attribute: "cluster"
+      action: upsert
     - key: "host.name"
       from_attribute: "host.name"
-      action: insert
+      action: upsert
 
   batch:
     # batch metrics before sending to reduce API usage

@@ -69,7 +69,7 @@ Make a copy and set variables in env.sh.
 Make a directory for your service account credentials and copy them over.
 
     mkdir -p ${HOME}/.google_cloud_auth/telemetry-collector/
-    chmod -R 770 ${HOME}/.google_cloud_auth
+    chmod -R 700 ${HOME}/.google_cloud_auth
     scp ... ${HOME}/.google_cloud_auth/telemetry-collector/
 
 Then run the collector and set it to restart automatically.
@@ -78,7 +78,7 @@ Then run the collector and set it to restart automatically.
          --restart always \
          -v ./otelcol:/config \
          -v ${HOME}/.google_cloud_auth/telemetry-collector:/auth \
-         -e OTEL_RESOURCE_ATTRIBUTES="host.name=$(hostname)" \
+         -e OTEL_RESOURCE_ATTRIBUTES="host.name=$(hostname),cluster=$(hostname)" \
          -e GOOGLE_APPLICATION_CREDENTIALS=/auth/${SERVICE_ACCOUNT_CREDS} \
          -p 4317:4317 \
          otel/opentelemetry-collector-contrib:${COLLECTOR_VERSION} \
@@ -88,7 +88,7 @@ Add in `-p 55679:55679` if you want to use Zpages to debug the collector.
 
 Then add something to your crontab to run the Go executable every minute.
 
-    echo "* * * * * /bin/bash ${HOME}/Code/aqi2otel/run.sh" | crontab -
+    echo "* * * * * /bin/bash ${HOME}/aqi2otel/run.sh 2>&1 | logger -t aqi2otel" | crontab -
 
 Ta-da!
 

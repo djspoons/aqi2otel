@@ -62,6 +62,8 @@ func Run(ctx context.Context, useStdoutExporter bool) {
 		resource.NewWithAttributes(semconv.SchemaURL,
 			semconv.ServiceNameKey.String("AQI"),
 			attribute.String("sensor_id", os.Getenv("PURPLE_AIR_SENSOR_ID")),
+			attribute.String("host.name", os.Getenv("HOSTNAME")),
+			attribute.String("cluster", os.Getenv("HOSTNAME")),
 		))
 	if err != nil {
 		panic(err)
