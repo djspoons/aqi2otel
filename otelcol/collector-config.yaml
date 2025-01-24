@@ -20,16 +20,10 @@ receivers:
 processors:
   resource:
     attributes:
+    # Must add a location here – this doesn't mean anything but must be one of the real GCP 
+    # regions.
     - key: "location"
-      value: "us-west1"
-      action: upsert
-    # Add a cluster key so that we can ensure these metrics are unique from Google
-    # Cloud Monitoring's perspective.
-    - key: "cluster"
-      from_attribute: "cluster"
-      action: upsert
-    - key: "host.name"
-      from_attribute: "host.name"
+      value: "us-west2"
       action: upsert
 
   batch:
@@ -37,25 +31,6 @@ processors:
     send_batch_max_size: 200
     send_batch_size: 200
     timeout: 5s
-
-  transform:
-    # "location", "cluster", "namespace", "job", "instance", and "project_id" are reserved, and 
-    # metrics containing these labels will be rejected.  Prefix them with exported_ to prevent this.
-    metric_statements:
-    - context: datapoint
-      statements:
-      - set(attributes["exported_location"], attributes["location"])
-      - delete_key(attributes, "location")
-      - set(attributes["exported_cluster"], attributes["cluster"])
-      - delete_key(attributes, "cluster")
-      - set(attributes["exported_namespace"], attributes["namespace"])
-      - delete_key(attributes, "namespace")
-      - set(attributes["exported_job"], attributes["job"])
-      - delete_key(attributes, "job")
-      - set(attributes["exported_instance"], attributes["instance"])
-      - delete_key(attributes, "instance")
-      - set(attributes["exported_project_id"], attributes["project_id"])
-      - delete_key(attributes, "project_id")
 
   memory_limiter:
     # drop metrics if memory usage gets too high

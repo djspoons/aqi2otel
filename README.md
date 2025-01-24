@@ -78,7 +78,7 @@ Then run the collector and set it to restart automatically.
          --restart always \
          -v ./otelcol:/config \
          -v ${HOME}/.google_cloud_auth/telemetry-collector:/auth \
-         -e OTEL_RESOURCE_ATTRIBUTES="host.name=$(hostname),cluster=$(hostname)" \
+         -e OTEL_RESOURCE_ATTRIBUTES="cluster=$(hostname)" \
          -e GOOGLE_APPLICATION_CREDENTIALS=/auth/${SERVICE_ACCOUNT_CREDS} \
          -p 4317:4317 \
          otel/opentelemetry-collector-contrib:${COLLECTOR_VERSION} \
@@ -91,6 +91,25 @@ Then add something to your crontab to run the Go executable every minute.
     echo "* * * * * /bin/bash ${HOME}/aqi2otel/run.sh 2>&1 | logger -t aqi2otel" | crontab -
 
 Ta-da!
+
+## Notes on attributes
+
+I have to admit that I'm still a little mystified on how attributes are
+handled by the Prometheus receiver, the resource processor, and Google's
+managed Prometheus. Some combination the resource target labels (for example,
+location and cluster) are required and must be suitably unique. What I have
+here seems to work, though I'm sure there are better ways to do it.
+
+* Set `location` via the resource processor: this puts a `location` resource
+ attribute on all points
+* Set `cluster` via OTEL_RESOURCE_ATTRIBUTES: this puts (or seems to put?) a
+ `cluster` attribute (both resource and point) on metrics from the collector
+ itself
+* Set `cluster` via the SDK: this puts a `cluster` resource attribute on any
+ of the points from the sensor
+
+I set `cluster` to the host name in both cases since that seemed most
+meaningful to me.
 
 # Google Cloud Run Set-Up
 
