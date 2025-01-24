@@ -57,13 +57,17 @@ func Run(ctx context.Context, useStdoutExporter bool) {
 		panic(err)
 	}
 
+	hostname, err := os.Hostname()
+	if err != nil {
+		panic(err)
+	}
 	var res *resource.Resource
 	res, err = resource.Merge(resource.Default(),
 		resource.NewWithAttributes(semconv.SchemaURL,
 			semconv.ServiceNameKey.String("AQI"),
 			attribute.String("sensor_id", os.Getenv("PURPLE_AIR_SENSOR_ID")),
-			attribute.String("host.name", os.Getenv("HOSTNAME")),
-			attribute.String("cluster", os.Getenv("HOSTNAME")),
+			attribute.String("host.name", hostname),
+			attribute.String("cluster", hostname),
 		))
 	if err != nil {
 		panic(err)
