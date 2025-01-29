@@ -46,6 +46,7 @@ func GetPurpleAirSensorDataFromAPI(apiKey, sensorID string) (*Sample, error) {
 	sample.Lag =
 		float64(time.Now().Unix()) -
 			data["sensor"].(map[string]interface{})["stats"].(map[string]interface{})["time_stamp"].(float64)
+	// TODO update corrections with new methods
 	sample.Temperature =
 		data["sensor"].(map[string]interface{})["temperature"].(float64) - temperature_offset
 	sample.Pressure =
